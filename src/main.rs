@@ -2,8 +2,10 @@ use std::{
     env,
 };
 
-use typemap::Key;
-use std::collections::HashMap;
+use std::collections::{
+    HashMap,
+    HashSet
+};
 
 use serenity::{
     model::{channel::Message, gateway::Ready},
@@ -12,11 +14,24 @@ use serenity::{
 
 struct ShillCounter;
 
-impl Key for ShillCounter {
+impl TypeMapKey for ShillCounter {
     type Value = HashMap<String, u64>;
 }
 
+struct ShillCategory;
+
+impl TypeMapKey for ShillCategory {
+    type Value = HashSet<String>;
+}
+
 struct Handler;
+
+fn get_categories(ctx: &Context) -> HashSet<String> {
+    let data = ctx.data.write();
+    let categories = data.get::<ShillCategory>().unwrap();
+
+    categories.clone()
+}
 
 impl EventHandler for Handler {
     // Set a handler for the `message` event - so that whenever a new message
@@ -25,16 +40,23 @@ impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
     fn message(&self, ctx: Context, msg: Message) {
-        if msg.content.to_lowercase().contains("ign") {
-            // Sending a message can fail, due to a network error, an
-            // authentication error, or lack of permissions to post in the
-            // channel, so log to stdout when some error happens, with a
-            // description of it.
+        let lowercase_msg = msg.content.to_lowercase();
 
-            inc_counter(&ctx, "ign");
+        let categories = get_categories(&ctx);
 
-            if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!") {
-                println!("Error sending message: {:?}", why);
+        for category in categories.iter() {
+            if lowercase_msg.contains(category) {
+                // Sending a message can fail, due to a network error, an
+                // authentication error, or lack of permissions to post in the
+                // channel, so log to stdout when some error happens, with a
+                // description of it.
+
+                let count = lowercase_msg.matches(category).count() as u64;
+                inc_counter(&ctx, category, count);
+
+                if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!") {
+                    println!("Error sending message: {:?}", why);
+                }
             }
         }
     }
@@ -45,20 +67,25 @@ impl EventHandler for Handler {
     // private channels, and more.
     //
     // In this case, just print what the current user's username is.
-    fn ready(&self, _: Context, ready: Ready) {
+    fn ready(&self, ctx: Context, ready: Ready) {
+        let mut data = ctx.data.write();
+        let set = data.get_mut::<ShillCategory>().unwrap();
+
+        set.insert(String::from("ign"));
+        set.insert(String::from("hyperx"));
+
         println!("{} is connected!", ready.user.name);
     }
 }
 
-fn inc_counter<S>(ctx: &Context, name: S)
-  where S: Into<std::string::String>
+fn inc_counter(ctx: &Context, name: &String, count: u64)
 {
     let mut data = ctx.data.write();
     let counter = data.get_mut::<ShillCounter>().unwrap();
-    let entry = counter.entry(name.into()).or_insert(0);
-    *entry += 1;
+    let entry = counter.entry(name.clone()).or_insert(0);
+    *entry += count;
 
-    println!("shill count: {}", *entry);
+    println!("{} shill count: {}", name, *entry);
 }
 
 fn main() {
@@ -74,6 +101,7 @@ fn main() {
     {
         let mut data = client.data.write();
         data.insert::<ShillCounter>(HashMap::default());
+        data.insert::<ShillCategory>(HashSet::default());
     }
 
     // Finally, start a single shard, and start listening to events.
