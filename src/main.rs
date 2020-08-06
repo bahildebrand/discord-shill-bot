@@ -12,6 +12,15 @@ use serenity::{
     prelude::*,
 };
 
+use log::{
+    info,
+    warn,
+    error,
+    debug
+};
+
+use log4rs::init_file;
+
 struct ShillCounter;
 
 impl TypeMapKey for ShillCounter {
@@ -53,10 +62,6 @@ impl EventHandler for Handler {
 
                 let count = lowercase_msg.matches(category).count() as u64;
                 inc_counter(&ctx, category, count);
-
-                if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!") {
-                    println!("Error sending message: {:?}", why);
-                }
             }
         }
     }
@@ -74,7 +79,7 @@ impl EventHandler for Handler {
         set.insert(String::from("ign"));
         set.insert(String::from("hyperx"));
 
-        println!("{} is connected!", ready.user.name);
+        info!("{} is connected!", ready.user.name);
     }
 }
 
@@ -85,10 +90,11 @@ fn inc_counter(ctx: &Context, name: &String, count: u64)
     let entry = counter.entry(name.clone()).or_insert(0);
     *entry += count;
 
-    println!("{} shill count: {}", name, *entry);
+    debug!("{} shill count: {}", name, *entry);
 }
 
 fn main() {
+    init_file("log4rs.yml", Default::default()).unwrap();
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN")
         .expect("Expected a token in the environment");
@@ -109,6 +115,6 @@ fn main() {
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
     if let Err(why) = client.start() {
-        println!("Client error: {:?}", why);
+        error!("Client error: {:?}", why);
     }
 }
