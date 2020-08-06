@@ -1,37 +1,33 @@
 use std::{
     env,
 };
-
 use std::collections::{
     HashMap,
     HashSet
 };
-
 use serenity::{
     model::{channel::Message, gateway::Ready},
     prelude::*,
+    framework::{
+        StandardFramework,
+        standard::macros::group
+    }
 };
-
 use log::{
     info,
-    warn,
     error,
     debug
 };
-
 use log4rs::init_file;
 
-struct ShillCounter;
+mod commands;
+use commands::COUNT_COMMAND;
 
-impl TypeMapKey for ShillCounter {
-    type Value = HashMap<String, u64>;
-}
-
-struct ShillCategory;
-
-impl TypeMapKey for ShillCategory {
-    type Value = HashSet<String>;
-}
+mod shill_structs;
+use shill_structs::{
+    ShillCounter,
+    ShillCategory
+};
 
 struct Handler;
 
@@ -93,6 +89,11 @@ fn inc_counter(ctx: &Context, name: &String, count: u64)
     debug!("{} shill count: {}", name, *entry);
 }
 
+#[group("shill")]
+#[prefix = "shill"]
+#[commands(count)]
+struct Shill;
+
 fn main() {
     init_file("log4rs.yml", Default::default()).unwrap();
     // Configure the client with your Discord bot token in the environment.
@@ -109,6 +110,14 @@ fn main() {
         data.insert::<ShillCounter>(HashMap::default());
         data.insert::<ShillCategory>(HashSet::default());
     }
+
+    client.with_framework(
+        StandardFramework::new()
+            .group(&SHILL_GROUP)
+            .configure(|c| {
+                c.prefix("!")
+            })
+    );
 
     // Finally, start a single shard, and start listening to events.
     //
