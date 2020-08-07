@@ -6,7 +6,7 @@ use std::collections::{
     HashSet
 };
 use serenity::{
-    model::{channel::Message, gateway::Ready},
+    model::{channel::Message, gateway::Ready, user::User},
     prelude::*,
     framework::{
         StandardFramework,
@@ -26,7 +26,8 @@ use commands::COUNT_COMMAND;
 mod shill_structs;
 use shill_structs::{
     ShillCounter,
-    ShillCategory
+    ShillCategory,
+    BotName
 };
 
 struct Handler;
@@ -36,6 +37,13 @@ fn get_categories(ctx: &Context) -> HashSet<String> {
     let categories = data.get::<ShillCategory>().unwrap();
 
     categories.clone()
+}
+
+fn check_for_bot_name(ctx: &Context, name: &String) -> bool {
+    let data = ctx.data.write();
+    let bot_name = data.get::<BotName>().unwrap();
+
+    bot_name.contains(name)
 }
 
 impl EventHandler for Handler {
@@ -48,6 +56,13 @@ impl EventHandler for Handler {
         let lowercase_msg = msg.content.to_lowercase();
 
         let categories = get_categories(&ctx);
+
+        // Ignore messages from bot and commands
+        if lowercase_msg.contains("!shill") ||
+            check_for_bot_name(&ctx, &msg.author.name)
+        {
+            return;
+        }
 
         for category in categories.iter() {
             if lowercase_msg.contains(category) {
@@ -70,10 +85,17 @@ impl EventHandler for Handler {
     // In this case, just print what the current user's username is.
     fn ready(&self, ctx: Context, ready: Ready) {
         let mut data = ctx.data.write();
-        let set = data.get_mut::<ShillCategory>().unwrap();
 
-        set.insert(String::from("ign"));
-        set.insert(String::from("hyperx"));
+        {
+            let category_set = data.get_mut::<ShillCategory>().unwrap();
+            category_set.insert(String::from("ign"));
+            category_set.insert(String::from("hyperx"));
+        }
+
+        {
+            let botname_set = data.get_mut::<BotName>().unwrap();
+            botname_set.insert(String::from(ready.user.name.clone()));
+        }
 
         info!("{} is connected!", ready.user.name);
     }
@@ -109,6 +131,7 @@ fn main() {
         let mut data = client.data.write();
         data.insert::<ShillCounter>(HashMap::default());
         data.insert::<ShillCategory>(HashSet::default());
+        data.insert::<BotName>(HashSet::default());
     }
 
     client.with_framework(

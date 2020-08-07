@@ -1,5 +1,5 @@
 [package]
-name = "shill-bot"
+name = "discord-shill-bot"
 version = "0.1.0"
 authors = ["Blake Hildebrand <baugusthildebrand@gmail.com>"]
 edition = "2018"

@@ -15,3 +15,9 @@ pub struct ShillCategory;
 impl TypeMapKey for ShillCategory {
     type Value = HashSet<String>;
 }
+
+pub struct BotName;
+
+impl TypeMapKey for BotName {
+    type Value = HashSet<String>;
+}
