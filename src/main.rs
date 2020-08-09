@@ -1,12 +1,13 @@
 use std::{
     env,
+    default::Default
 };
 use std::collections::{
     HashMap,
     HashSet
 };
 use serenity::{
-    model::{channel::Message, gateway::Ready, user::User},
+    model::{channel::Message, gateway::Ready},
     prelude::*,
     framework::{
         StandardFramework,
@@ -19,6 +20,15 @@ use log::{
     debug
 };
 use log4rs::init_file;
+use rusoto_core::{
+    Region
+};
+use rusoto_dynamodb::{
+    DynamoDbClient,
+    PutItemInput,
+    AttributeValue,
+    DynamoDb
+};
 
 mod commands;
 use commands::COUNT_COMMAND;
@@ -27,7 +37,8 @@ mod shill_structs;
 use shill_structs::{
     ShillCounter,
     ShillCategory,
-    BotName
+    BotName,
+    DataBase
 };
 
 struct Handler;
@@ -47,11 +58,6 @@ fn check_for_bot_name(ctx: &Context, name: &String) -> bool {
 }
 
 impl EventHandler for Handler {
-    // Set a handler for the `message` event - so that whenever a new message
-    // is received - the closure (or function) passed will be called.
-    //
-    // Event handlers are dispatched through a threadpool, and so multiple
-    // events can be dispatched simultaneously.
     fn message(&self, ctx: Context, msg: Message) {
         let lowercase_msg = msg.content.to_lowercase();
 
@@ -66,10 +72,6 @@ impl EventHandler for Handler {
 
         for category in categories.iter() {
             if lowercase_msg.contains(category) {
-                // Sending a message can fail, due to a network error, an
-                // authentication error, or lack of permissions to post in the
-                // channel, so log to stdout when some error happens, with a
-                // description of it.
 
                 let count = lowercase_msg.matches(category).count() as u64;
                 inc_counter(&ctx, category, count);
@@ -77,12 +79,6 @@ impl EventHandler for Handler {
         }
     }
 
-    // Set a handler to be called on the `ready` event. This is called when a
-    // shard is booted, and a READY payload is sent by Discord. This payload
-    // contains data like the current user's guild Ids, current user data,
-    // private channels, and more.
-    //
-    // In this case, just print what the current user's username is.
     fn ready(&self, ctx: Context, ready: Ready) {
         let mut data = ctx.data.write();
 
@@ -97,18 +93,59 @@ impl EventHandler for Handler {
             botname_set.insert(String::from(ready.user.name.clone()));
         }
 
+        {
+            let database_map = data.get_mut::<DataBase>().unwrap();
+
+            let client = DynamoDbClient::new(Region::UsEast1);
+            database_map.insert(String::from("DBClient"), client);
+        }
+
         info!("{} is connected!", ready.user.name);
     }
 }
 
-fn inc_counter(ctx: &Context, name: &String, count: u64)
+async fn inc_counter(ctx: &Context, name: &String, count: u64)
 {
-    let mut data = ctx.data.write();
-    let counter = data.get_mut::<ShillCounter>().unwrap();
-    let entry = counter.entry(name.clone()).or_insert(0);
-    *entry += count;
 
-    debug!("{} shill count: {}", name, *entry);
+    let mut mcount = 0;
+    let mut data = ctx.data.write();
+    {
+        let counter = data.get_mut::<ShillCounter>().unwrap();
+        let entry = counter.entry(name.clone()).or_insert(0);
+        *entry += count;
+        mcount = entry.clone();
+
+        debug!("{} shill count: {}", name, *entry);
+    }
+
+    {
+        let db_map = data.get_mut::<DataBase>().unwrap();
+
+        let client = db_map.get(&String::from("DBClient")).unwrap();
+
+        let mut item_map = HashMap::new();
+
+        item_map.insert(String::from("Name"), AttributeValue {
+            s: Some(name.clone()),
+            ..Default::default()
+        });
+        item_map.insert(String::from("Category"), AttributeValue {
+            s: Some(String::from("ign")),
+            ..Default::default()
+        });
+        item_map.insert(String::from("Count"), AttributeValue {
+            n: Some(String::from(mcount.to_string())),
+            ..Default::default()
+        });
+        let item = PutItemInput {
+            table_name: String::from("ShillCount"),
+            item: item_map,
+            ..Default::default()
+        };
+
+        let ret = client.put_item(item).await;
+        debug!("{:?}", ret);
+    }
 }
 
 #[group("shill")]
@@ -122,16 +159,13 @@ fn main() {
     let token = env::var("DISCORD_TOKEN")
         .expect("Expected a token in the environment");
 
-    // Create a new instance of the Client, logging in as a bot. This will
-    // automatically prepend your bot token with "Bot ", which is a requirement
-    // by Discord for bot users.
     let mut client = Client::new(&token, Handler).expect("Err creating client");
-
     {
         let mut data = client.data.write();
         data.insert::<ShillCounter>(HashMap::default());
         data.insert::<ShillCategory>(HashSet::default());
         data.insert::<BotName>(HashSet::default());
+        data.insert::<DataBase>(HashMap::default());
     }
 
     client.with_framework(
@@ -142,10 +176,6 @@ fn main() {
             })
     );
 
-    // Finally, start a single shard, and start listening to events.
-    //
-    // Shards will automatically attempt to reconnect, and will perform
-    // exponential backoff until it reconnects.
     if let Err(why) = client.start() {
         error!("Client error: {:?}", why);
     }

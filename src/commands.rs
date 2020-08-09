@@ -6,7 +6,6 @@ use serenity::model::channel::Message;
 use serenity::prelude::*;
 
 use crate::shill_structs::{
-    ShillCategory,
     ShillCounter
 };
 

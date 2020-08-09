@@ -2,7 +2,9 @@ use std::collections::{
     HashMap,
     HashSet
 };
+
 use serenity::prelude::TypeMapKey;
+use rusoto_dynamodb::DynamoDbClient;
 
 pub struct ShillCounter;
 
@@ -20,4 +22,10 @@ pub struct BotName;
 
 impl TypeMapKey for BotName {
     type Value = HashSet<String>;
+}
+
+pub struct DataBase;
+
+impl TypeMapKey for DataBase {
+    type Value = HashMap<String, DynamoDbClient>;
 }
