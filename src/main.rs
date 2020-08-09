@@ -29,6 +29,7 @@ use rusoto_dynamodb::{
     AttributeValue,
     DynamoDb
 };
+use futures::executor::block_on;
 
 mod commands;
 use commands::COUNT_COMMAND;
@@ -74,7 +75,7 @@ impl EventHandler for Handler {
             if lowercase_msg.contains(category) {
 
                 let count = lowercase_msg.matches(category).count() as u64;
-                inc_counter(&ctx, category, count);
+                block_on(inc_counter(&ctx, category, count));
             }
         }
     }
