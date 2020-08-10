@@ -75,7 +75,7 @@ impl EventHandler for Handler {
             if lowercase_msg.contains(category) {
 
                 let count = lowercase_msg.matches(category).count() as u64;
-                block_on(inc_counter(&ctx, category, count));
+                inc_counter(&ctx, category, count);
             }
         }
     }
@@ -105,48 +105,43 @@ impl EventHandler for Handler {
     }
 }
 
-async fn inc_counter(ctx: &Context, name: &String, count: u64)
+fn inc_counter(ctx: &Context, name: &String, count: u64)
 {
-
-    let mut mcount = 0;
     let mut data = ctx.data.write();
     {
         let counter = data.get_mut::<ShillCounter>().unwrap();
         let entry = counter.entry(name.clone()).or_insert(0);
         *entry += count;
-        mcount = entry.clone();
 
         debug!("{} shill count: {}", name, *entry);
     }
 
-    {
-        let db_map = data.get_mut::<DataBase>().unwrap();
+}
 
-        let client = db_map.get(&String::from("DBClient")).unwrap();
+async fn db_put(name: &String, category: String, count: u64,
+        client: DynamoDbClient) {
+    let mut item_map = HashMap::new();
 
-        let mut item_map = HashMap::new();
+    item_map.insert(String::from("Name"), AttributeValue {
+        s: Some(name.clone()),
+        ..Default::default()
+    });
+    item_map.insert(String::from("Category"), AttributeValue {
+        s: Some(category),
+        ..Default::default()
+    });
+    item_map.insert(String::from("Count"), AttributeValue {
+        n: Some(String::from(count.to_string())),
+        ..Default::default()
+    });
+    let item = PutItemInput {
+        table_name: String::from("ShillCount"),
+        item: item_map,
+        ..Default::default()
+    };
 
-        item_map.insert(String::from("Name"), AttributeValue {
-            s: Some(name.clone()),
-            ..Default::default()
-        });
-        item_map.insert(String::from("Category"), AttributeValue {
-            s: Some(String::from("ign")),
-            ..Default::default()
-        });
-        item_map.insert(String::from("Count"), AttributeValue {
-            n: Some(String::from(mcount.to_string())),
-            ..Default::default()
-        });
-        let item = PutItemInput {
-            table_name: String::from("ShillCount"),
-            item: item_map,
-            ..Default::default()
-        };
-
-        let ret = client.put_item(item).await;
-        debug!("{:?}", ret);
-    }
+    let ret = client.put_item(item).await;
+    debug!("{:?}", ret);
 }
 
 #[group("shill")]
