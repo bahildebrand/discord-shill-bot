@@ -19,12 +19,16 @@ use log::{
     error,
     debug
 };
+use rusoto_core::Region;
+use rusoto_dynamodb::DynamoDbClient;
+
 use log4rs::init_file;
 
 mod commands;
 use commands::COUNT_COMMAND;
 mod framework;
 use framework::ShillFramework;
+use tokio::prelude::*;
 
 mod shill_structs;
 use shill_structs::{
@@ -108,7 +112,8 @@ fn inc_counter(ctx: &Context, name: &String, count: u64)
 #[commands(count)]
 struct Shill;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     init_file("log4rs.yml", Default::default()).unwrap();
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN")
@@ -126,7 +131,8 @@ fn main() {
     let (tx, _) = channel();
     client.with_framework(
         ShillFramework {
-            channel_tx: tx
+            channel_tx: tx,
+            client: DynamoDbClient::new(Region::UsEast1)
         }
     );
 

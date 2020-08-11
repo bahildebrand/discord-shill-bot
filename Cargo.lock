@@ -325,6 +325,7 @@ dependencies = [
  "rusoto_dynamodb",
  "serenity",
  "threadpool",
+ "tokio",
  "typemap",
 ]
 
