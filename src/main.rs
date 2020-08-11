@@ -1,6 +1,7 @@
 use std::{
     env,
-    default::Default
+    default::Default,
+    sync::mpsc::channel
 };
 use std::collections::{
     HashMap,
@@ -10,7 +11,6 @@ use serenity::{
     model::{channel::Message, gateway::Ready},
     prelude::*,
     framework::{
-        StandardFramework,
         standard::macros::group
     }
 };
@@ -20,19 +20,11 @@ use log::{
     debug
 };
 use log4rs::init_file;
-use rusoto_core::{
-    Region
-};
-use rusoto_dynamodb::{
-    DynamoDbClient,
-    PutItemInput,
-    AttributeValue,
-    DynamoDb
-};
-use futures::executor::block_on;
 
 mod commands;
 use commands::COUNT_COMMAND;
+mod framework;
+use framework::ShillFramework;
 
 mod shill_structs;
 use shill_structs::{
@@ -94,13 +86,6 @@ impl EventHandler for Handler {
             botname_set.insert(String::from(ready.user.name.clone()));
         }
 
-        {
-            let database_map = data.get_mut::<DataBase>().unwrap();
-
-            let client = DynamoDbClient::new(Region::UsEast1);
-            database_map.insert(String::from("DBClient"), client);
-        }
-
         info!("{} is connected!", ready.user.name);
     }
 }
@@ -116,32 +101,6 @@ fn inc_counter(ctx: &Context, name: &String, count: u64)
         debug!("{} shill count: {}", name, *entry);
     }
 
-}
-
-async fn db_put(name: &String, category: String, count: u64,
-        client: DynamoDbClient) {
-    let mut item_map = HashMap::new();
-
-    item_map.insert(String::from("Name"), AttributeValue {
-        s: Some(name.clone()),
-        ..Default::default()
-    });
-    item_map.insert(String::from("Category"), AttributeValue {
-        s: Some(category),
-        ..Default::default()
-    });
-    item_map.insert(String::from("Count"), AttributeValue {
-        n: Some(String::from(count.to_string())),
-        ..Default::default()
-    });
-    let item = PutItemInput {
-        table_name: String::from("ShillCount"),
-        item: item_map,
-        ..Default::default()
-    };
-
-    let ret = client.put_item(item).await;
-    debug!("{:?}", ret);
 }
 
 #[group("shill")]
@@ -164,12 +123,11 @@ fn main() {
         data.insert::<DataBase>(HashMap::default());
     }
 
+    let (tx, _) = channel();
     client.with_framework(
-        StandardFramework::new()
-            .group(&SHILL_GROUP)
-            .configure(|c| {
-                c.prefix("!")
-            })
+        ShillFramework {
+            channel_tx: tx
+        }
     );
 
     if let Err(why) = client.start() {
