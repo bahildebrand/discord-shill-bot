@@ -21,11 +21,11 @@ impl TypeMapKey for ShillCategory {
 pub struct BotName;
 
 impl TypeMapKey for BotName {
-    type Value = HashSet<String>;
+    type Value = String;
 }
 
 pub struct DataBase;
 
 impl TypeMapKey for DataBase {
-    type Value = HashMap<String, DynamoDbClient>;
+    type Value = DynamoDbClient;
 }
