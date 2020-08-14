@@ -1,32 +1,42 @@
-use rusoto_dynamodb::{
-    DynamoDbClient,
-    PutItemInput,
-    AttributeValue,
-    DynamoDb
-};
+use rusoto_dynamodb::{DynamoDbClient, UpdateItemInput, AttributeValue, DynamoDb};
 use std::collections::HashMap;
+use log::{error, info};
 
 pub async fn put_category_update(name: String, category: String, count: u64,
     client: DynamoDbClient) {
-    let mut item_map = HashMap::new();
+    let mut key_map = HashMap::new();
+    let mut expr_val_map = HashMap::new();
+    let mut expr_name_map = HashMap::new();
 
-    item_map.insert(String::from("Name"), AttributeValue {
+    key_map.insert(String::from("Name"), AttributeValue {
         s: Some(name.clone()),
         ..Default::default()
     });
-    item_map.insert(String::from("Category"), AttributeValue {
+    key_map.insert(String::from("Category"), AttributeValue {
         s: Some(category),
         ..Default::default()
     });
-    item_map.insert(String::from("Count"), AttributeValue {
-        n: Some(String::from(count.to_string())),
+
+    expr_val_map.insert(String::from(":v"), AttributeValue {
+        n: Some(count.to_string()),
         ..Default::default()
     });
-    let item = PutItemInput {
+    expr_name_map.insert(String::from("#C"), String::from("Count"));
+
+    let item = UpdateItemInput {
         table_name: String::from("ShillCount"),
-        item: item_map,
+        update_expression: Some(String::from("SET #C = #C + :v")),
+        key: key_map,
+        return_values: Some(String::from("ALL_NEW")),
+        expression_attribute_values: Some(expr_val_map),
+        expression_attribute_names: Some(expr_name_map),
         ..Default::default()
     };
 
-    let ret = client.put_item(item).await;
+    let ret = client.update_item(item).await;
+
+    match ret {
+        Ok(new_vals) => info!("New vals {:?}", new_vals),
+        Err(e) => error!("Category update failed {}", e)
+    }
 }

@@ -86,20 +86,18 @@ async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &
 async fn inc_counter(ctx: &Context, name: &String, category: &String,
         count: u64)
 {
-    let total_count: u64;
     let mut data = ctx.data.write().await;
     {
         let counter = data.get_mut::<ShillCounter>().unwrap();
         let entry = counter.entry(name.clone()).or_insert(0);
         *entry += count;
-        total_count = *entry;
 
         debug!("{} shill count: {}", name, *entry);
     }
 
     {
         let db_client = data.get::<DataBase>().unwrap();
-        put_category_update(name.clone(), category.clone(), total_count,
+        put_category_update(name.clone(), category.clone(), count,
             db_client.clone()).await;
     }
 
