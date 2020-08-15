@@ -1,8 +1,13 @@
-use rusoto_dynamodb::{DynamoDbClient, UpdateItemInput, AttributeValue, DynamoDb};
+use rusoto_dynamodb::{
+    DynamoDbClient,
+    UpdateItemInput,
+    AttributeValue,
+    DynamoDb,
+    GetItemInput};
 use std::collections::HashMap;
 use log::{error, info};
 
-pub async fn put_category_update(name: String, category: String, count: u64,
+pub async fn update_category_count(name: String, category: String, count: u64,
     client: DynamoDbClient) {
     let mut key_map = HashMap::new();
     let mut expr_val_map = HashMap::new();
@@ -38,5 +43,39 @@ pub async fn put_category_update(name: String, category: String, count: u64,
     match ret {
         Ok(new_vals) => info!("New vals {:?}", new_vals),
         Err(e) => error!("Category update failed {}", e)
+    }
+}
+
+pub async fn get_count(name: String, category: String, client: DynamoDbClient)
+        -> Result<u64, &'static str> {
+    let mut key_map = HashMap::new();
+
+    key_map.insert(String::from("Name"), AttributeValue {
+        s: Some(name.clone()),
+        ..Default::default()
+    });
+    key_map.insert(String::from("Category"), AttributeValue {
+        s: Some(category),
+        ..Default::default()
+    });
+
+    let item = GetItemInput {
+        table_name: String::from("ShillCount"),
+        key: key_map,
+        ..Default::default()
+    };
+
+    let ret = client.get_item(item).await;
+
+    match ret {
+        Ok(output) => {
+            let result_map = output.item.unwrap();
+            let attr = result_map.get("Count").unwrap();
+            Ok(attr.n.as_ref().unwrap().parse::<u64>().unwrap())
+        },
+        Err(e) => {
+            error!("Count get failed {}", e);
+            Err("Can't reach database")
+        }
     }
 }

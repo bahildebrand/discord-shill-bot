@@ -1,6 +1,6 @@
 use rusoto_core::Region;
 use rusoto_dynamodb::DynamoDbClient;
-use std::{collections::{HashMap, HashSet}, env};
+use std::{collections::HashSet, env};
 use serenity::{
     async_trait,
     framework::standard::{
@@ -17,8 +17,7 @@ use serenity::{
 use serenity::prelude::*;
 use log::{
     info,
-    error,
-    debug
+    error
 };
 use log4rs::init_file;
 
@@ -27,14 +26,13 @@ use commands::COUNT_COMMAND;
 
 mod shill_structs;
 use shill_structs::{
-    ShillCounter,
     ShillCategory,
     BotName,
     DataBase
 };
 
 mod db_manager;
-use db_manager::put_category_update;
+use db_manager::update_category_count;
 
 struct Handler;
 
@@ -86,21 +84,11 @@ async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &
 async fn inc_counter(ctx: &Context, name: &String, category: &String,
         count: u64)
 {
-    let mut data = ctx.data.write().await;
-    {
-        let counter = data.get_mut::<ShillCounter>().unwrap();
-        let entry = counter.entry(name.clone()).or_insert(0);
-        *entry += count;
+    let data = ctx.data.write().await;
 
-        debug!("{} shill count: {}", name, *entry);
-    }
-
-    {
-        let db_client = data.get::<DataBase>().unwrap();
-        put_category_update(name.clone(), category.clone(), count,
-            db_client.clone()).await;
-    }
-
+    let db_client = data.get::<DataBase>().unwrap();
+    update_category_count(name.clone(), category.clone(), count,
+        db_client.clone()).await;
 }
 
 async fn get_categories(ctx: &Context) -> HashSet<String> {
@@ -137,6 +125,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             }
         }
 }
+
 
 
 #[hook]
@@ -176,15 +165,12 @@ async fn main() {
                    .with_whitespace(true)
                    .on_mention(Some(bot_id))
                    .prefix("~")
-                   .delimiters(vec![", ", ","])
                    .owners(owners))
         .before(before)
         .after(after)
         .unrecognised_command(unknown_command)
         .normal_message(normal_message)
         .on_dispatch_error(dispatch_error)
-        .bucket("emoji", |b| b.delay(5)).await
-        .bucket("complicated", |b| b.delay(5).time_span(30).limit(2)).await
         .group(&SHILL_GROUP);
 
     let mut client = Client::new(&token)
@@ -195,7 +181,6 @@ async fn main() {
 
     {
         let mut data = client.data.write().await;
-        data.insert::<ShillCounter>(HashMap::default());
         data.insert::<ShillCategory>(HashSet::default());
         data.insert::<BotName>(String::default());
         data.insert::<DataBase>(DynamoDbClient::new(Region::UsEast1));
