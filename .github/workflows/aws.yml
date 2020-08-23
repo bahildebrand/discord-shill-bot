@@ -25,9 +25,9 @@
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, actions-configuration ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, actions-configuration ]
 
 name: Deploy to Amazon ECS
 
@@ -78,5 +78,5 @@ jobs:
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: discord-shill-service
-        cluster: discord-shill 
+        cluster: discord-shill
         wait-for-service-stability: true
