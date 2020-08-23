@@ -25,9 +25,9 @@
 
 on:
   push:
-    branches: [ master, actions-configuration ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, actions-configuration ]
+    branches: [ master ]
 
 name: Deploy to Amazon ECS
 
