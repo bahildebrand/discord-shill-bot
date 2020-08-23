@@ -1,6 +1,6 @@
 {
     "family": "discord-shill",
-    "executionRoleArn": "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+    "executionRoleArn": "arn:aws:iam::876745564939:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
     "containerDefinitions": [
         {
