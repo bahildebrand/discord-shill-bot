@@ -8,5 +8,8 @@
     "cpu": "512",
     "memory": "4096",
     "containerDefinitions": [
+        {
+            "name": "discord-shill-bot"
+        }
     ]
 }
