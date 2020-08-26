@@ -6,5 +6,7 @@
         "FARGATE"
     ],
     "cpu": "512",
-    "memory": "4096"
+    "memory": "4096",
+    "containerDefinitions": [
+    ]
 }
