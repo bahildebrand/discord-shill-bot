@@ -1,6 +1,7 @@
 {
     "family": "discord-shill",
     "executionRoleArn": "arn:aws:iam::876745564939:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::876745564939:role/DiscordShillBotRole",
     "networkMode": "awsvpc",
     "requiresCompatibilities": [
         "FARGATE"
