@@ -3,7 +3,9 @@ use rusoto_dynamodb::{
     UpdateItemInput,
     AttributeValue,
     DynamoDb,
-    GetItemInput};
+    GetItemInput,
+    ScanInput,
+    ScanOutput};
 use std::collections::HashMap;
 use log::{error, info};
 
@@ -48,7 +50,7 @@ pub async fn update_category_count(name: String, category: String, count: u64,
 
 pub async fn get_count(name: String, category: String, client: DynamoDbClient,
             table_name: String)
-        -> Result<u64, &'static str> {
+            -> Result<u64, &'static str> {
     let mut key_map = HashMap::new();
 
     key_map.insert(String::from("Name"), AttributeValue {
@@ -76,7 +78,40 @@ pub async fn get_count(name: String, category: String, client: DynamoDbClient,
         },
         Err(e) => {
             error!("Count get failed {}", e);
-            Err("Can't reach database")
+            Err("Failed to get shill count")
+        }
+    }
+}
+
+pub async fn get_top_shills(category: String, client: DynamoDbClient,
+        table_name: String)
+        -> Result<Vec<(String, u64)>, &'static str> {
+    let mut vec = Vec::new();
+
+    let scan_input = ScanInput {
+        table_name: table_name,
+        ..Default::default()
+    };
+
+    let ret = client.scan(scan_input).await;
+
+    match ret {
+        Ok(output) => {
+            let output_vec = output.items.unwrap_or_default();
+
+            for map in output_vec {
+                let name = map.get("Name").unwrap().s.as_ref().unwrap();
+                let count_option = map.get("Count").unwrap().n.as_ref();
+                let count = count_option.unwrap().parse::<u64>().unwrap();
+
+                vec.push((name.clone(), count.clone()));
+            }
+
+            Ok(vec)
+        },
+        Err(e) => {
+            error!("Get top shills failed {}", e);
+            Err("Failed to get top shills")
         }
     }
 }

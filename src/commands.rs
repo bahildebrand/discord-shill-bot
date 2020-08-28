@@ -12,7 +12,7 @@ use crate::db_manager::get_count;
 #[command]
 #[description = "Request the shill count for a given category"]
 #[usage("!shill count <name> <category>")]
-#[example("!shill count ign")]
+#[example("!shill count ryan ign")]
 pub async fn count(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() != 2 {
         let _ = msg.reply(&ctx, "Incorrect number of arguements").await;
@@ -40,6 +40,26 @@ pub async fn count(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
                 let _ = msg.reply(&ctx, e).await;
             }
         }
+    }
+
+    Ok(())
+}
+
+#[command]
+#[description = "See the top 5 shills for a category"]
+#[usage("!shill leaderboard <category>")]
+#[example("!shill leaderboard ign")]
+pub async fn leaderboard(ctx: &Context, msg: &Message, mut args: Args)
+        -> CommandResult {
+    if args.len() != 2 {
+        let _ = msg.reply(&ctx, "Incorrect number of arguements").await;
+        error!("Args {:?}", args);
+    } else {
+        let category = args.single::<String>().unwrap();
+
+        let data = ctx.data.write().await;
+        let db_client = data.get::<DataBase>().unwrap();
+        let table_name = data.get::<TableName>().unwrap();
     }
 
     Ok(())
