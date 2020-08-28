@@ -6,7 +6,7 @@ use serenity::model::channel::Message;
 use serenity::prelude::*;
 use log::error;
 
-use crate::shill_structs::DataBase;
+use crate::shill_structs::{DataBase, TableName};
 use crate::db_manager::get_count;
 
 #[command]
@@ -23,9 +23,10 @@ pub async fn count(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
         let data = ctx.data.write().await;
         let db_client = data.get::<DataBase>().unwrap();
+        let table_name = data.get::<TableName>().unwrap();
 
         let count = get_count(name.clone(), category.clone(),
-            db_client.clone()).await;
+            db_client.clone(), table_name.clone()).await;
 
         match count {
             Ok(c) => {

@@ -22,3 +22,9 @@ pub struct DataBase;
 impl TypeMapKey for DataBase {
     type Value = DynamoDbClient;
 }
+
+pub struct TableName;
+
+impl TypeMapKey for TableName {
+    type Value = String;
+}

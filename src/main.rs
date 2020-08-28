@@ -28,7 +28,8 @@ mod shill_structs;
 use shill_structs::{
     ShillCategory,
     BotName,
-    DataBase
+    DataBase,
+    TableName
 };
 
 mod db_manager;
@@ -87,8 +88,9 @@ async fn inc_counter(ctx: &Context, name: &String, category: &String,
     let data = ctx.data.write().await;
 
     let db_client = data.get::<DataBase>().unwrap();
+    let table_name = data.get::<TableName>().unwrap();
     update_category_count(name.clone(), category.clone(), count,
-        db_client.clone()).await;
+        db_client.clone(), table_name.clone()).await;
 }
 
 async fn get_categories(ctx: &Context) -> HashSet<String> {
@@ -143,11 +145,14 @@ async fn main() {
     init_file("log4rs.yml", Default::default()).unwrap();
 
     // Configure the client with your Discord bot token in the environment.
-    let token = env::var("DISCORD_TOKEN").expect(
-        "Expected a token in the environment",
+    let discord_token = env::var("DISCORD_TOKEN").expect(
+        "Discord bot token env variable not found.",
+    );
+    let table_name = env::var("DB_TABLE_NAME").expect(
+        "DynamoDB table name env variable not found.",
     );
 
-    let http = Http::new_with_token(&token);
+    let http = Http::new_with_token(&discord_token);
 
     // We will fetch your bot's owners and id
     let (owners, bot_id) = match http.get_current_application_info().await {
@@ -173,7 +178,7 @@ async fn main() {
         .on_dispatch_error(dispatch_error)
         .group(&SHILL_GROUP);
 
-    let mut client = Client::new(&token)
+    let mut client = Client::new(&discord_token)
         .event_handler(Handler)
         .framework(framework)
         .await
@@ -184,6 +189,7 @@ async fn main() {
         data.insert::<ShillCategory>(HashSet::default());
         data.insert::<BotName>(String::default());
         data.insert::<DataBase>(DynamoDbClient::new(Region::UsEast1));
+        data.insert::<TableName>(table_name.clone());
     }
 
     if let Err(why) = client.start().await {

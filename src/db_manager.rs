@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use log::{error, info};
 
 pub async fn update_category_count(name: String, category: String, count: u64,
-    client: DynamoDbClient) {
+    client: DynamoDbClient, table_name: String) {
     let mut key_map = HashMap::new();
     let mut expr_val_map = HashMap::new();
     let mut expr_name_map = HashMap::new();
@@ -29,7 +29,7 @@ pub async fn update_category_count(name: String, category: String, count: u64,
     expr_name_map.insert(String::from("#C"), String::from("Count"));
 
     let item = UpdateItemInput {
-        table_name: String::from("ShillCount"),
+        table_name: table_name,
         update_expression: Some(String::from("SET #C = #C + :v")),
         key: key_map,
         return_values: Some(String::from("ALL_NEW")),
@@ -46,7 +46,8 @@ pub async fn update_category_count(name: String, category: String, count: u64,
     }
 }
 
-pub async fn get_count(name: String, category: String, client: DynamoDbClient)
+pub async fn get_count(name: String, category: String, client: DynamoDbClient,
+            table_name: String)
         -> Result<u64, &'static str> {
     let mut key_map = HashMap::new();
 
@@ -60,7 +61,7 @@ pub async fn get_count(name: String, category: String, client: DynamoDbClient)
     });
 
     let item = GetItemInput {
-        table_name: String::from("ShillCount"),
+        table_name: table_name,
         key: key_map,
         ..Default::default()
     };

@@ -13,8 +13,12 @@
             "name": "discord-shill-bot",
             "secrets": [
                 {
-                  "name": "DISCORD_TOKEN",
-                  "valueFrom": "arn:aws:secretsmanager:us-east-1:876745564939:secret:discordShillBotToken-avzygH"
+                    "name": "DISCORD_TOKEN",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:876745564939:secret:discordShillBotToken-avzygH"
+                },
+                {
+                    "name": "DB_TABLE_NAME",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:876745564939:secret:shillBotCountTable-mKbqH8"
                 }
               ]
         }
