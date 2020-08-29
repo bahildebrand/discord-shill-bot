@@ -7,7 +7,7 @@ use serenity::prelude::*;
 use log::error;
 
 use crate::shill_structs::{DataBase, TableName};
-use crate::db_manager::get_count;
+use crate::db_manager::{get_count, get_shill_leaders};
 
 #[command]
 #[description = "Request the shill count for a given category"]
@@ -30,7 +30,7 @@ pub async fn count(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
         match count {
             Ok(c) => {
-                let reply_str = format!("@{} has shilled for {} {} times",
+                let reply_str = format!("{} has shilled for {} {} times",
                     name,
                     category,
                     c);
@@ -51,7 +51,7 @@ pub async fn count(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 #[example("!shill leaderboard ign")]
 pub async fn leaderboard(ctx: &Context, msg: &Message, mut args: Args)
         -> CommandResult {
-    if args.len() != 2 {
+    if args.len() != 1 {
         let _ = msg.reply(&ctx, "Incorrect number of arguements").await;
         error!("Args {:?}", args);
     } else {
@@ -60,6 +60,27 @@ pub async fn leaderboard(ctx: &Context, msg: &Message, mut args: Args)
         let data = ctx.data.write().await;
         let db_client = data.get::<DataBase>().unwrap();
         let table_name = data.get::<TableName>().unwrap();
+
+        let ret = get_shill_leaders(category.clone(), db_client.clone(),
+                table_name.clone()).await;
+
+        match ret {
+            Ok(leader_list) => {
+                let mut reply_str = format!("\n{} leaderboard:\n", category);
+
+                for (idx, entry) in leader_list.iter().enumerate() {
+                    let entry_str = format!("{}. {}: {}\n", idx + 1, entry.name,
+                            entry.count);
+
+                    reply_str.push_str(&entry_str);
+                }
+
+                let _ = msg.reply(&ctx, reply_str).await;
+            },
+            Err(e) => {
+                let _ = msg.reply(&ctx, e).await;
+            }
+        }
     }
 
     Ok(())

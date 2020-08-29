@@ -22,7 +22,7 @@ use log::{
 use log4rs::init_file;
 
 mod commands;
-use commands::COUNT_COMMAND;
+use commands::{COUNT_COMMAND, LEADERBOARD_COMMAND};
 
 mod shill_structs;
 use shill_structs::{
@@ -59,7 +59,7 @@ impl EventHandler for Handler {
 
 #[group]
 #[prefix = "shill"]
-#[commands(count)]
+#[commands(count, leaderboard)]
 struct Shill;
 
 #[hook]
