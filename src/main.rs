@@ -121,15 +121,19 @@ async fn normal_message(ctx: &Context, msg: &Message) {
         }
 
         for category in categories.iter() {
-            if lowercase_msg.contains(category) {
+            let split: Vec<&str> = lowercase_msg
+                    .split(|c| c == ' ' || c == '.')
+                    .collect();
+            for s in split {
+                let mut count: u64 = 0;
 
-                let count = lowercase_msg.matches(category).count() as u64;
+                if s == category {
+                    count += 1;
+                }
                 inc_counter(&ctx, &msg.author.name, category, count).await;
             }
         }
 }
-
-
 
 #[hook]
 async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) {

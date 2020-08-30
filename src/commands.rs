@@ -13,7 +13,8 @@ use crate::db_manager::{get_count, get_shill_leaders};
 #[description = "Request the shill count for a given category"]
 #[usage("!shill count <name> <category>")]
 #[example("!shill count ryan ign")]
-pub async fn count(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+pub async fn count(ctx: &Context, msg: &Message, mut args: Args)
+        -> CommandResult {
     if args.len() != 2 {
         let _ = msg.reply(&ctx, "Incorrect number of arguements").await;
         error!("Args {:?}", args);
