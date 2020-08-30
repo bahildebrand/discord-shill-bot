@@ -1,6 +1,7 @@
 mod commands;
 mod db_manager;
 mod shill_structs;
+mod message_parser;
 
 use rusoto_core::Region;
 use rusoto_dynamodb::DynamoDbClient;
@@ -25,7 +26,9 @@ use log::{
 };
 use log4rs::init_file;
 
+use message_parser::MessageParser;
 use commands::{COUNT_COMMAND, LEADERBOARD_COMMAND};
+
 
 use shill_structs::{
     ShillCategory,
@@ -110,29 +113,21 @@ async fn check_for_bot_name(ctx: &Context, name: &String) -> bool {
 
 #[hook]
 async fn normal_message(ctx: &Context, msg: &Message) {
-    let lowercase_msg = msg.content.to_lowercase();
+    // Ignore messages from bot and commands
+    if check_for_bot_name(&ctx, &msg.author.name).await
+    {
+        return;
+    }
 
-        let categories = get_categories(&ctx).await;
+    let parser = MessageParser {
+        youtube_api_key: String::from("")
+    };
 
-        // Ignore messages from bot and commands
-        if check_for_bot_name(&ctx, &msg.author.name).await
-        {
-            return;
-        }
+    let categories = get_categories(&ctx).await;
+    parser.parse(&msg.content, categories).await;
 
-        for category in categories.iter() {
-            let split: Vec<&str> = lowercase_msg
-                    .split(|c| c == ' ' || c == '.')
-                    .collect();
-            for s in split {
-                let mut count: u64 = 0;
+    // inc_counter(&ctx, &msg.author.name, category, count).await;
 
-                if s == category {
-                    count += 1;
-                }
-                inc_counter(&ctx, &msg.author.name, category, count).await;
-            }
-        }
 }
 
 #[hook]
