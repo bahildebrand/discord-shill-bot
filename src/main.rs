@@ -1,3 +1,7 @@
+mod commands;
+mod db_manager;
+mod shill_structs;
+
 use rusoto_core::Region;
 use rusoto_dynamodb::DynamoDbClient;
 use std::{collections::HashSet, env};
@@ -21,10 +25,8 @@ use log::{
 };
 use log4rs::init_file;
 
-mod commands;
 use commands::{COUNT_COMMAND, LEADERBOARD_COMMAND};
 
-mod shill_structs;
 use shill_structs::{
     ShillCategory,
     BotName,
@@ -32,7 +34,6 @@ use shill_structs::{
     TableName
 };
 
-mod db_manager;
 use db_manager::update_category_count;
 
 struct Handler;

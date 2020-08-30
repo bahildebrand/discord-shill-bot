@@ -34,9 +34,10 @@ pub async fn update_category_count(name: String, category: String, count: u64,
     });
     expr_name_map.insert(String::from("#C"), String::from("Count"));
 
+    let update_expression = String::from("ADD #C :v");
     let item = UpdateItemInput {
         table_name: table_name,
-        update_expression: Some(String::from("SET #C = #C + :v")),
+        update_expression: Some(update_expression),
         key: key_map,
         return_values: Some(String::from("ALL_NEW")),
         expression_attribute_values: Some(expr_val_map),
