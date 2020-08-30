@@ -26,7 +26,7 @@ use log::{
 };
 use log4rs::init_file;
 
-use message_parser::MessageParser;
+use message_parser::{MessageParser, ParseResult};
 use commands::{COUNT_COMMAND, LEADERBOARD_COMMAND};
 
 
@@ -86,14 +86,13 @@ async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &
     info!("Could not find command named '{}'", unknown_command_name);
 }
 
-async fn inc_counter(ctx: &Context, name: &String, category: &String,
-        count: u64)
+async fn inc_counter(ctx: &Context, name: &String, result: &ParseResult)
 {
     let data = ctx.data.write().await;
 
     let db_client = data.get::<DataBase>().unwrap();
     let table_name = data.get::<TableName>().unwrap();
-    update_category_count(name.clone(), category.clone(), count,
+    update_category_count(name.clone(), result.category.clone(), result.count,
         db_client.clone(), table_name.clone()).await;
 }
 
@@ -119,15 +118,22 @@ async fn normal_message(ctx: &Context, msg: &Message) {
         return;
     }
 
-    let parser = MessageParser {
-        youtube_api_key: String::from("")
-    };
+    let youtube_token = env::var("YOUTUBE_TOKEN").expect(
+        "Youtube token env variable not found.",
+    );
+    let parser = MessageParser::new(String::from(youtube_token));
 
     let categories = get_categories(&ctx).await;
-    parser.parse(&msg.content, categories).await;
+    let parse_results = parser.parse(&msg.content, categories).await;
 
-    // inc_counter(&ctx, &msg.author.name, category, count).await;
-
+    match parse_results {
+        Some(results) => {
+            for result in results {
+                inc_counter(&ctx, &msg.author.name, &result).await;
+            }
+        },
+        None => info!("No matches found in message")
+    }
 }
 
 #[hook]
