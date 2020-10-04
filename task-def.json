@@ -19,7 +19,7 @@
                 {
                     "name": "DB_TABLE_NAME",
                     "valueFrom": "arn:aws:secretsmanager:us-east-1:876745564939:secret:shillBotCountTable-mKbqH8"
-                }
+                },
                 {
                     "name": "YOUTUBE_TOKEN",
                     "valueFrom": "arn:aws:secretsmanager:us-east-1:876745564939:secret:youtubeToken-ksZY0w"
