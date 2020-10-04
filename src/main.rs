@@ -1,6 +1,7 @@
 mod commands;
 mod db_manager;
 mod shill_structs;
+mod message_parser;
 
 use rusoto_core::Region;
 use rusoto_dynamodb::DynamoDbClient;
@@ -25,7 +26,9 @@ use log::{
 };
 use log4rs::init_file;
 
+use message_parser::{MessageParser, ParseResult};
 use commands::{COUNT_COMMAND, LEADERBOARD_COMMAND};
+
 
 use shill_structs::{
     ShillCategory,
@@ -83,14 +86,13 @@ async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &
     info!("Could not find command named '{}'", unknown_command_name);
 }
 
-async fn inc_counter(ctx: &Context, name: &String, category: &String,
-        count: u64)
+async fn inc_counter(ctx: &Context, name: &String, result: &ParseResult)
 {
     let data = ctx.data.write().await;
 
     let db_client = data.get::<DataBase>().unwrap();
     let table_name = data.get::<TableName>().unwrap();
-    update_category_count(name.clone(), category.clone(), count,
+    update_category_count(name.clone(), result.category.clone(), result.count,
         db_client.clone(), table_name.clone()).await;
 }
 
@@ -110,29 +112,28 @@ async fn check_for_bot_name(ctx: &Context, name: &String) -> bool {
 
 #[hook]
 async fn normal_message(ctx: &Context, msg: &Message) {
-    let lowercase_msg = msg.content.to_lowercase();
+    // Ignore messages from bot and commands
+    if check_for_bot_name(&ctx, &msg.author.name).await
+    {
+        return;
+    }
 
-        let categories = get_categories(&ctx).await;
+    let youtube_token = env::var("YOUTUBE_TOKEN").expect(
+        "Youtube token env variable not found.",
+    );
+    let parser = MessageParser::new(String::from(youtube_token));
 
-        // Ignore messages from bot and commands
-        if check_for_bot_name(&ctx, &msg.author.name).await
-        {
-            return;
-        }
+    let categories = get_categories(&ctx).await;
+    let parse_results = parser.parse(&msg.content, categories).await;
 
-        for category in categories.iter() {
-            let split: Vec<&str> = lowercase_msg
-                    .split(|c| c == ' ' || c == '.')
-                    .collect();
-            for s in split {
-                let mut count: u64 = 0;
-
-                if s == category {
-                    count += 1;
-                }
-                inc_counter(&ctx, &msg.author.name, category, count).await;
+    match parse_results {
+        Some(results) => {
+            for result in results {
+                inc_counter(&ctx, &msg.author.name, &result).await;
             }
-        }
+        },
+        None => info!("No matches found in message")
+    }
 }
 
 #[hook]
